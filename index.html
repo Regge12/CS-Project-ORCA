@@ -24,6 +24,19 @@
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io(); // Reference to the server (Client-side)
+
+        const form = document.getElementById('form');
+        const input = document.getElementById('input');
+        
+        // Once the submit button is pressed, the client checks if the message is not empty.
+        // Then the client sends this message to the client
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if (input.value) {
+                socket.emit('chat message', input.value);
+                input.value = '';
+            }
+        })
     </script>
   </body>
 </html>
