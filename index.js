@@ -9,11 +9,12 @@ const server = createServer(app); // Creates a HTTP server
 const io = new Server(server);
 // Creates an instance of socket.io
 
+// On request of the server, the server will responds with the HTML file (index.html)
 app.get('/', (req, res) => {
     res.sendFile(join(__dirname, 'index.html'));
 })
-// On request of the server, the server will responds with the HTML file (index.html)
 
+// When there is a connection to the server this event will fire
 io.on('connection', (socket) => {
     console.log('A user connected');
 
@@ -25,11 +26,8 @@ io.on('connection', (socket) => {
         io.emit('chat message', msg);
     })
 })
-// When there is a connection to the server this event will fire
 
+// Here we make the server listen for connections to port 3000
 server.listen(3000, () => {
     console.log('server running at http://localhost:3000');
   });
-// Here we make the server listen for connections to port 3000
-
-io.emit('hello', 'world'); 
