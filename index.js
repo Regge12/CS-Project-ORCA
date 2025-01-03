@@ -18,11 +18,11 @@ io.on('connection', (socket) => {
     console.log('A user connected');
 
     socket.on('disconnect', () => {
-        console.log('User disconnected')
+        console.log('User disconnected');
     })
-    
+
     socket.on('chat message', (msg) => {
-        console.log('message: ' + msg);
+        io.emit('chat message', msg);
     })
 })
 // When there is a connection to the server this event will fire
@@ -31,3 +31,5 @@ server.listen(3000, () => {
     console.log('server running at http://localhost:3000');
   });
 // Here we make the server listen for connections to port 3000
+
+io.emit('hello', 'world'); 

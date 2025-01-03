@@ -27,6 +27,7 @@
 
         const form = document.getElementById('form');
         const input = document.getElementById('input');
+        const message = document.getElementById('messages'); // Container for the recieved messages
         
         // Once the submit button is pressed, the client checks if the message is not empty.
         // Then the client sends this message to the client
@@ -37,6 +38,15 @@
                 input.value = '';
             }
         })
+
+        socket.on('chat message', (msg) => {
+            // Creates a list element that will contain the message
+            const iteam = document.createElement('li');
+            iteam.textContent = msg;
+            message.appendChild(iteam);
+            window.scrollTo(0, document.body.scrollHeight); // Moves down the pages to fit the message
+        })
+        // Once the message is recieved, it will be displayed to the client
     </script>
   </body>
 </html>
