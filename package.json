@@ -10,5 +10,7 @@
   "license": "ISC",
   "type": "commonjs",
   "description": "This is a computer science project, ORCA - Online Realtime Chat Application. Prepare for a ton of blood sweat and tears :D",
-  "dependencies": {}
+  "dependencies": {
+    "express": "^4.21.2"
+  }
 }
