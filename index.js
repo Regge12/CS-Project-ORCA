@@ -6,7 +6,9 @@ const { Server } = require('socket.io'); // Importing the Server function from s
 const app = express(); // Creates and instance of Express
 const server = createServer(app); // Creates a HTTP server
 // Express (app) will handel all incoming HTTP requests
-const io = new Server(server);
+const io = new Server(server, {
+    connectionStateRecovery: {} // Will save the state of the server if a user disconnects
+});
 // Creates an instance of socket.io
 
 // On request of the server, the server will responds with the HTML file (index.html)
@@ -24,7 +26,7 @@ io.on('connection', (socket) => {
 
     socket.on('chat message', (msg) => {
         io.emit('chat message', msg);
-    })
+    })// Sends the chat message to all users
 })
 
 // Here we make the server listen for connections to port 3000
