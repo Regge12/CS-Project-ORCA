@@ -12,7 +12,7 @@ const io = new Server(server, {
 // Creates an instance of socket.io
 
 // On request of the server, the server will responds with the HTML file (index.html)
-app.get('/', (req, res) => {
+app.get('/', (req, res) => {''
     res.sendFile(join(__dirname, 'index.html'));
 })
 

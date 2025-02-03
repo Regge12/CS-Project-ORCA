@@ -12,6 +12,8 @@
   "description": "This is a computer science project, ORCA - Online Realtime Chat Application. Prepare for a ton of blood sweat and tears :D",
   "dependencies": {
     "express": "^4.21.2",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   }
 }
