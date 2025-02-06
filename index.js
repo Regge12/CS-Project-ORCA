@@ -2,34 +2,92 @@ const express = require('express'); // Importing the Express framework
 const { createServer } = require('node:http'); // Importing the createServer function from the http module
 const { join } = require('node:path'); // Importing join function from the path module
 const { Server } = require('socket.io'); // Importing the Server function from socket.io module
+const sqlite3 = require('sqlite3'); // Importing SQlite which is a database engine (Database manager)
+const { open } = require('sqlite'); // Importing the open function from SQLite to open the database
 
-const app = express(); // Creates and instance of Express
-const server = createServer(app); // Creates a HTTP server
-// Express (app) will handel all incoming HTTP requests
-const io = new Server(server, {
-    connectionStateRecovery: {} // Will save the state of the server if a user disconnects
-});
-// Creates an instance of socket.io
+// This function is the main part of our program, it has one entry point and is asynchronous
+async function main() {
 
-// On request of the server, the server will responds with the HTML file (index.html)
-app.get('/', (req, res) => {''
-    res.sendFile(join(__dirname, 'index.html'));
-})
+    const db = await open({
+        filename: 'chat.db', // It will create a new database with this name is none is found
+        driver: sqlite3.Database // Tells SQLite which drives to use when interacting with the database
+    });
+    // This function will wait till the database chat.db is open
 
-// When there is a connection to the server this event will fire
-io.on('connection', (socket) => {
-    console.log('A user connected');
 
-    socket.on('disconnect', () => {
-        console.log('User disconnected');
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            client_offset TEXT UNIQUE,
+            content TEXT
+        );
+    `);
+    // This function will execute the SQL commands inside the function
+    /* The SQL will create the fields:
+    id - the primary key that's an integer that will autoincrement
+    client_offset - is a key that is unique for each client (use for searching messages for certain users)
+    content - Here the message sent be the client is stored
+    */
+
+    const app = express(); // Creates and instance of Express
+    const server = createServer(app); // Creates a HTTP server
+    // Express (app) will handel all incoming HTTP requests
+    const io = new Server(server, {
+        connectionStateRecovery: {} // Will save the state of the server if a user disconnects
+    });
+    // Creates an instance of socket.io
+
+    // On request of the server, the server will responds with the HTML file (index.html)
+    app.get('/', (req, res) => {''
+        res.sendFile(join(__dirname, 'index.html'));
     })
 
-    socket.on('chat message', (msg) => {
-        io.emit('chat message', msg);
-    })// Sends the chat message to all users
-})
+    // When there is a connection to the server this event will fire
+    io.on('connection', async (socket) => {
+        // these functions are asynchronous since we are fetching from an API
+        
+        // This function will run once a 'chat message' is received by the server
+        socket.on('chat message', async (msg) => {
+            let result;
+            try {
+              // store the message in the database once a chat message is received
+              result = await db.run('INSERT INTO messages (content) VALUES (?)', msg);
+            } catch (e) {
+              // should return an error
+              return;
+            }
 
-// Here we make the server listen for connections to port 3000
-server.listen(3000, () => {
-    console.log('server running at http://localhost:3000');
-  });
+            io.emit('chat message', msg, result.lastID);
+            // Sends the chat message to all users and the id of the message
+        })
+
+        // this event will run if the user reconnects to the server unsuccessfully
+        if (!socket.recovered) {
+            try {
+                // This will send all the messages to the client that they have missed
+                await db.each('SELECT id, content FROM messages WHERE id > ?', 
+                    [socket.handshake.auth.serverOffset || 0],
+                    (_err, row) => {
+                      socket.emit('chat message', row.content, row.id);
+                    }
+                )
+            } catch (e) {
+                // Errors should be displayed
+            }
+        }
+
+        console.log('A user connected');
+
+        socket.on('disconnect', () => {
+            console.log('User disconnected');
+        })
+    })
+
+    // Here we make the server listen for connections to port 3000
+    server.listen(3000, () => {
+        console.log('server running at http://localhost:3000');
+    });
+}
+
+// Calling the main block of our program to start/run the server
+main()
