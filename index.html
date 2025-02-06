@@ -23,7 +23,12 @@
     </form>
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io(); // Reference to the server (Client-side)
+      // This creates a reference of the server on the client side
+      const socket = io({
+        auth: {
+        serverOffset: 0
+        }
+      });
 
         const form = document.getElementById('form');
         const input = document.getElementById('input');
@@ -43,12 +48,14 @@
             }
         })
 
-        socket.on('chat message', (msg) => {
+        socket.on('chat message', function(msg, serverOffset) { // sending the message and the state of the server
             // Creates a list element that will contain the message
             const iteam = document.createElement('li');
             iteam.textContent = msg;
             message.appendChild(iteam);
             window.scrollTo(0, document.body.scrollHeight); // Moves down the pages to fit the message
+            socket.auth.serverOffset = serverOffset;
+            // This will update the state of the client to be synced with the state of the server
         })
         // Once the message is recieved, it will be displayed to the client
     </script>
