@@ -25,8 +25,8 @@ async function main() {
     // This function will execute the SQL commands inside the function
     /* The SQL will create the fields:
     id - the primary key that's an integer that will autoincrement
-    client_offset - is a key that is unique for each client (use for searching messages for certain users)
-    content - Here the message sent be the client is stored
+    client_offset - is a key that is unique for each client (used for searching messages for certain users)
+    content - Here the message sent by the client is stored
     */
 
     const app = express(); // Creates and instance of Express
@@ -47,18 +47,23 @@ async function main() {
         // these functions are asynchronous since we are fetching from an API
         
         // This function will run once a 'chat message' is received by the server
-        socket.on('chat message', async (msg) => {
+        socket.on('chat message', async (msg, clientOffset, callback) => {
             let result;
             try {
               // store the message in the database once a chat message is received
-              result = await db.run('INSERT INTO messages (content) VALUES (?)', msg);
+              result = await db.run('INSERT INTO messages (content, client_offset) VALUES (?, ?)', msg, clientOffset);
             } catch (e) {
-              // should return an error
+                if (e.error === 19) {
+                    callback(); // Will notifiy the client when there is a duplicate message
+                } else {
+                    pass // nothing let the client retry
+                }
               return;
             }
 
             io.emit('chat message', msg, result.lastID);
             // Sends the chat message to all users and the id of the message
+            callback(); // acknowledge the event
         })
 
         // this event will run if the user reconnects to the server unsuccessfully
