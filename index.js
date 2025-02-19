@@ -4,9 +4,36 @@ const { join } = require('node:path'); // Importing join function from the path 
 const { Server } = require('socket.io'); // Importing the Server function from socket.io module
 const sqlite3 = require('sqlite3'); // Importing SQlite which is a database engine (Database manager)
 const { open } = require('sqlite'); // Importing the open function from SQLite to open the database
+const { availableParallelism } = require('node:os'); // This function will allow for parallel proccessing on the CPU's cores
+const cluster = require('node:cluster'); // This module allows us to run multiple processes (workers) in parallel.
+const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter'); 
+// This will import a function the will be used to connect worker (servers) together
+
+if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
+    const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
+    // create one worker per available core
+    for (let i = 0; i < numCPUs; i++) {
+      cluster.fork({
+        PORT: 3000 + i
+      });
+    }
+    
+    // set up the adapter on the primary thread (Connects all workers together)
+    return setupPrimary();
+  }
 
 // This function is the main part of our program, it has one entry point and is asynchronous
 async function main() {
+    const app = express(); // Creates and instance of Express
+    const server = createServer(app); // Creates a HTTP server
+    // Express (app) will handel all incoming HTTP requests
+    const io = new Server(server, {
+        connectionStateRecovery: {}, // Will save the state of the server if a user disconnects
+        // set up the adapter on each worker thread
+        adapter: createAdapter()
+        // syncs messages across all workers
+    });
+    // Creates an instance of socket.io
 
     const db = await open({
         filename: 'chat.db', // It will create a new database with this name is none is found
@@ -29,14 +56,6 @@ async function main() {
     content - Here the message sent by the client is stored
     */
 
-    const app = express(); // Creates and instance of Express
-    const server = createServer(app); // Creates a HTTP server
-    // Express (app) will handel all incoming HTTP requests
-    const io = new Server(server, {
-        connectionStateRecovery: {} // Will save the state of the server if a user disconnects
-    });
-    // Creates an instance of socket.io
-
     // On request of the server, the server will responds with the HTML file (index.html)
     app.get('/', (req, res) => {''
         res.sendFile(join(__dirname, 'index.html'));
@@ -56,7 +75,7 @@ async function main() {
                 if (e.error === 19) {
                     callback(); // Will notifiy the client when there is a duplicate message
                 } else {
-                    pass // nothing let the client retry
+                    // nothing let the client retry
                 }
               return;
             }
@@ -88,9 +107,11 @@ async function main() {
         })
     })
 
-    // Here we make the server listen for connections to port 3000
-    server.listen(3000, () => {
-        console.log('server running at http://localhost:3000');
+      // each worker will listen on a distinct port
+    const port = process.env.PORT;
+
+    server.listen(port, () => {
+        console.log(`server running at http://localhost:${port}`);
     });
 }
 
