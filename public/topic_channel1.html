@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="css/topic_channel.css">
+  </head>
+  <body>
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input" autocomplete="off" placeholder="Enter"/><button>Send</button>
+      <button id="toggle-btn">Disconnect</button>
+    </form>
+    <script src="/socket.io/socket.io.js"></script>
+  <!--Connect the html page to the websocket -->
+    <script src="js/chat_logic.js"></script>
+  </body>
+</html>

@@ -8,6 +8,8 @@ const { availableParallelism } = require('node:os'); // This function will allow
 const cluster = require('node:cluster'); // This module allows us to run multiple processes (workers) in parallel.
 const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter'); 
 // This will import a function the will be used to connect worker (servers) together
+const path = require('path'); // Allows the document to access paths to get other files
+
 
 if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
     const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
@@ -35,8 +37,9 @@ async function main() {
     });
     // Creates an instance of socket.io
 
+    const dbPath = path.join(__dirname, 'src', 'db', 'chat.db'); // Path to /src/db/chat.db
     const db = await open({
-        filename: 'chat.db', // It will create a new database with this name is none is found
+        filename: dbPath, // It will create a new database with this name is none is found
         driver: sqlite3.Database // Tells SQLite which drives to use when interacting with the database
     });
     // This function will wait till the database chat.db is open
@@ -56,9 +59,12 @@ async function main() {
     content - Here the message sent by the client is stored
     */
 
-    // On request of the server, the server will responds with the HTML file (index.html)
+    // Serve static files (Give all public files to the client)
+    app.use(express.static(path.join(__dirname, 'public')));
+
+    // On request of the server, the server will responds with the HTML file (index.html) as default
     app.get('/', (req, res) => {''
-        res.sendFile(join(__dirname, 'index.html'));
+        res.sendFile(join(__dirname, 'public', 'index.html'));
     })
 
     // When there is a connection to the server this event will fire
