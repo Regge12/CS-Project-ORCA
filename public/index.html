@@ -1,11 +1,21 @@
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Socket.IO chat</title>
     <link rel="stylesheet" href="css/topic_channel.css">
-</head>
-<body>
-    <a href="topic_channel1.html">Topic Channel 1</a>
-</body>
+  </head>
+  <body>
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module" src="./js/main.mjs"></script>
+    <script type="module" src="./js/chat.mjs"></script>
+
+    <ul id="messages"></ul>
+    <form id="form" action="">
+      <input id="input" autocomplete="off" placeholder="Enter"/><button>Send</button>
+      <button id="toggle-btn">Disconnect</button>
+    </form>
+  <!--Connect the html page to the websocket -->
+  </body>
 </html>
