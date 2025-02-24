@@ -17,11 +17,29 @@
     </style>
   </head>
   <body>
+    <select id="channelSelect">
+      <option value="general">General</option>
+      <option value="tech">Tech</option>
+      <option value="gaming">Gaming</option>
+    </select>
+    <button onclick="switchChannel()">Switch Channel</button>
+    
     <ul id="messages"></ul>
-    <form id="form" action="">
-      <input id="input" autocomplete="off" placeholder="Enter"/><button>Send</button>
+    <form id="form">
+      <input id="input" autocomplete="off" placeholder="Enter" />
+      <button>Send</button>
     </form>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/script.js"></script>
+    <script>
+       function switchChannel() {
+    let newChannel = document.getElementById("channelSelect").value;
+    socket.emit('join channel', newChannel, username, (response) => {
+      console.log(response);
+      document.getElementById("messages").innerHTML = ""; // Clear messages when switching
+    });
+    channel_ID = newChannel;
+    }
+    </script>
   </body>
 </html>
