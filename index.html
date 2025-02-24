@@ -23,10 +23,6 @@
       <option value="gaming">Gaming</option>
     </select>
     <button onclick="switchChannel()">Switch Channel</button>
-<<<<<<< HEAD
-=======
-    
->>>>>>> e28796f6c24e01cacffa8d96af40a4b489139518
     <ul id="messages"></ul>
     <form id="form">
       <input id="input" autocomplete="off" placeholder="Enter" />
@@ -34,9 +30,6 @@
     </form>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/script.js"></script>
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
 
     <script>
       // When the client switches channels this event will run
@@ -49,18 +42,6 @@
       channel_ID = newChannel;
       }
 
-=======
-    <script>
-       function switchChannel() {
-    let newChannel = document.getElementById("channelSelect").value;
-    socket.emit('join channel', newChannel, username, (response) => {
-      console.log(response);
-      document.getElementById("messages").innerHTML = ""; // Clear messages when switching
-    });
-    channel_ID = newChannel;
-    }
->>>>>>> e28796f6c24e01cacffa8d96af40a4b489139518
     </script>
->>>>>>> a39d4787ad4ba8488d014202cbeda671e2e5e8ba
   </body>
 </html>
