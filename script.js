@@ -1,44 +1,51 @@
-let counter = 0; 
-// will be incremented so that the clientOffset is always unique
-
-// This creates a reference of the server on the client side
+let counter = 0;
 let socket = io({
-auth: {
-serverOffset: 0
-},
-// How long the client will wait for an acknowlegdement from the server
-ackTimeout: 10000,
-// The amount of times the client will try to send messages to the server
-retries: 3,
+    auth: {
+        serverOffset: 0
+    },
+    ackTimeout: 10000,
+    retries: 3,
 });
 
 const form = document.getElementById('form');
 const input = document.getElementById('input');
-const message = document.getElementById('messages'); // Container for the recieved messages
+const message = document.getElementById('messages');
 
-// Once the submit button is pressed, the client checks if the message is not empty
-// Then the client sends this message to the client
+let channel_ID = "general";
+let username = prompt("Enter your username:") || "Anonymous";
+
+// Join a channel
+socket.emit('join channel', channel_ID, username, (response) => {
+    console.log(response);
+});
+
 form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (input.value) {
-        // Creates an unique identifier for each message
-        let clientOffset = `${socket.id}-${counter++}`;
-        socket.emit('chat message', input.value, clientOffset);
+        let clientOffset = `${socket.id}-${Date.now()}`;
+        socket.emit('chat message', input.value, clientOffset, channel_ID);
         input.value = '';
-        input.placeholder = 'Enter'
     }
-    else {
-        input.placeholder = 'Invalid input';
-    }
-})
+});
 
-socket.on('chat message', function(msg, serverOffset) { // the message and the state of the server sent from the server
-    // Creates a list element that will contain the message
-    const iteam = document.createElement('li');
-    iteam.textContent = msg;
-    message.appendChild(iteam);
-    window.scrollTo(0, document.body.scrollHeight); // Moves down the pages to fit the message
+socket.on('chat message', function(msg, serverOffset) {
+    const item = document.createElement('li');
+    item.textContent = msg;
+    message.appendChild(item);
+    window.scrollTo(0, document.body.scrollHeight);
     socket.auth.serverOffset = serverOffset;
-    // This will update the state of the client to be synced with the state of the server
-})
-// Once the message is recieved, it will be displayed to the client
+});
+
+socket.on('user-joined', (username, users) => {
+    const item = document.createElement('li');
+    item.textContent = `${username} joined the chat.`;
+    item.style.fontStyle = "italic";
+    message.appendChild(item);
+});
+
+socket.on('user-left', (username) => {
+    const item = document.createElement('li');
+    item.textContent = `${username} left the chat.`;
+    item.style.fontStyle = "italic";
+    message.appendChild(item);
+});
