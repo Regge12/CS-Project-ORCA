@@ -5,11 +5,50 @@
 </head>
 <body>
     <h2>Login</h2>
-    <form action="/auth/login" method="POST">
-        <input name="username" placeholder="username" required />
-        <input type="password" name="password" placeholder="Password" required />
+    <form id="login-form">
+        <input id="username" name="username" placeholder="username" required />
+        <input id="password" type="password" name="password" placeholder="Password" required />
         <button type="submit">Login</button>
     </form>
     <a href="register.html">Register</a>
+
+    <div id="error-message" style="display: none; color: red;"></div>
+
+    <script>
+        document.getElementById("login-form").addEventListener("submit", async (e) => {
+            e.preventDefault(); // Prevent default form submission
+    
+            // Get username and password input values
+            const username = document.getElementById("username").value;
+            const password = document.getElementById("password").value;
+    
+            try {
+                const response = await fetch("/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+    
+                if (!response.ok) {
+                    const data = await response.json();
+                    showErrorMessage(data.message); // Display error message from server
+                    return;
+                }
+    
+                // Redirect user to dashboard on successful login
+                window.location.href = "/dashboard.html";
+            } catch (error) {
+                console.error("Error during login:", error.message);
+                showErrorMessage("An error occurred. Please try again.");
+            }
+        });
+    
+        function showErrorMessage(message) {
+            const errorContainer = document.getElementById("error-message");
+            errorContainer.textContent = message;
+            errorContainer.style.display = "block"; // Show error message
+        }
+    </script>
+    
 </body>
 </html>

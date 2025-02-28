@@ -10,14 +10,15 @@ const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter');
 // This will import a function the will be used to connect worker (servers) together
 const path = require('path'); // Allows the document to access paths to get other files
 
-const authRoutes = require('./routes/auth'); // Make sure this is correct
-
-require('dotenv').config();
-const session = require('express-session');
-const passport = require('passport');
+const authRoutes = require('./routes/auth'); // Imports the authenication routes
+require('dotenv').config(); // Will store sensitive information outside the code securely 
+const session = require('express-session'); // Manages user sessions (keeps the users logged in)
+const passport = require('passport'); // This will handle authentication
 const LocalStrategy = require('passport-local').Strategy;
-const bcrypt = require('bcryptjs');
-const db = require('./db');
+const bcrypt = require('bcryptjs'); // Will hash our client's password
+const db = require('./db'); // Loads the database (USERDATA)
+const { callbackify } = require('node:util');
+const { config } = require('node:process');
 
 
 function setUpServer() {
@@ -35,13 +36,13 @@ function setUpServer() {
 }
 
 async function createDatabase() {
-    const db2 = await open({
+    const database = await open({
         filename: 'chat.db', // It will create a new database with this name is none is found
         driver: sqlite3.Database // Tells SQLite which drives to use when interacting with the database
     });
     // This function will wait till the database chat.db is open
 
-    await db2.exec(`
+    await database.exec(`
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             client_offset TEXT UNIQUE,
@@ -58,7 +59,7 @@ async function createDatabase() {
     channel - This is the channel that the message was sent in
     */
 
-    return db2;
+    return database;
 }
 
 if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
@@ -71,17 +72,40 @@ if (cluster.isPrimary) { // if this is the primary process (the first time this 
     return setupPrimary();
 }
 
+function configureSession(app) {
+    // The session helps keep the user logged in
+    app.use(session({
+        secret: process.env.SECRET_KEY || 'your_secret_key', // secret key to protect data
+        resave: false,
+        saveUninitialized: false
+        // Prevents unnecessary session saving
+    }));
+            
+    // Initialize Passport
+    app.use(passport.initialize());
+    // Start the node.js passport
+    app.use(passport.session());
+    // Links passport to session so logged in users are remembered
+}
 
 function handleFileConnection(app) {
+
     // Serve static files (Give all public files to the client)
     app.use(express.static(path.join(__dirname)));
+    app.use(express.static(path.join(__dirname, 'public')));
 
     // On request of the server, the server will responds with the HTML file (index.html) as default
     app.get('/', (req, res) => {
         res.sendFile(join(__dirname, 'public', 'index.html'));
     });
 
-    app.use(express.json()); // ✅ This is needed to parse JSON requests
+    // Middleware
+    app.use(express.json());
+    // Allows the server to understand JASON data
+    app.use(express.urlencoded({ extended: false }));
+    // Allows the server to read HTML form data
+
+    configureSession(app);
 
     // Load routes
     app.use(authRoutes);
@@ -91,35 +115,38 @@ function handleFileConnection(app) {
     app.use(express.json()); // Parse JSON data
     // Serve static files (IMPORTANT)
     app.use(express.static(path.join(__dirname, 'public')));
+}
 
-    // Session setup
-    app.use(session({
-        secret: process.env.SECRET_KEY || 'your_secret_key',
-        resave: false,
-        saveUninitialized: false
-    }));
+async function checkLoginCredentials(database) {
+    // The passport will recieve the username and password from the client when the user tries to login
+    passport.use(new LocalStrategy(
+        { usernameField: 'username' }, // Use username instead of default username
+        (username, password, callback) => {
+            const user = database.prepare("SELECT * FROM users WHERE username = ?").get(username);
+            // Here it searches the database for the username to get the record
 
-    // Initialize Passport
-    app.use(passport.initialize());
-    app.use(passport.session());
+            if (!user) { // If username is not in the database an error message is output
+                callback(null, false, { message: "User not found" });
+                return
+            }
+              
+            // This hashes the password and compares it with the hashed password in the database
+            bcrypt.compare(password, user.password, (err, isMatch) => {
+                if (err) {
+                    return callback(err);
+                }
+                if (!isMatch){ // If the hashes don't match then an error message is output
+                    return callback(null, false, { message: "Incorrect password" });
+                }
+                return callback(null, user);
+            });
+        }
+    ));
+}
 
-    }
-
-function createPassport(app) {
+async function createPassport(app, database) {
     // Passport Strategy
-passport.use(new LocalStrategy(
-    { usernameField: 'username' }, // Use username instead of default username
-    (username, password, done) => {
-        const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-        if (!user) return done(null, false, { message: "User not found" });
-
-        bcrypt.compare(password, user.password, (err, isMatch) => {
-            if (err) return done(err);
-            if (!isMatch) return done(null, false, { message: "Incorrect password" });
-            return done(null, user);
-        });
-    }
-));
+    await checkLoginCredentials(database)
 
 // Serialize & Deserialize User
 passport.serializeUser((user, done) => done(null, user.id));
@@ -164,7 +191,7 @@ async function main() {
 
     handleFileConnection(app);
 
-    createPassport(app);
+    createPassport(app, db);
 
     // Routes
     app.use('/auth', require('./routes/auth'));
