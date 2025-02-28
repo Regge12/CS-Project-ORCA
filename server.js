@@ -10,6 +10,15 @@ const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter');
 // This will import a function the will be used to connect worker (servers) together
 const path = require('path'); // Allows the document to access paths to get other files
 
+require('dotenv').config();
+const express = require('express');
+const mongoose = require('mongoose');
+const session = require('express-session');
+const passport = require('passport');
+const LocalStrategy = require('passport-local').Strategy;
+const bcrypt = require('bcryptjs');
+const User = require('./models/User');
+
 if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
     const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
     // create one worker per available core
@@ -20,6 +29,8 @@ if (cluster.isPrimary) { // if this is the primary process (the first time this 
     // set up the adapter on the primary thread (Connects all workers together)
     return setupPrimary();
 }
+
+function Connect
 
 function setUpServer() {
     const app = express(); // Creates and instance of Express
