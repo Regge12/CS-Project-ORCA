@@ -33,15 +33,15 @@ form.addEventListener('submit', (e) => {
     if (input.value) {
         // Creates an unique identifier for each message
         let clientOffset = `${socket.id}-${Date.now()}`;
-        socket.emit('chat message', input.value, clientOffset, channel_ID);
+        socket.emit('chat message', input.value, clientOffset, channel_ID, username);
         input.value = '';
     }
 });
 
-socket.on('chat message', function(msg, serverOffset) { // the message and the state of the server sent from the server
+socket.on('chat message', function(msg, serverOffset, sender) { // the message and the state of the server sent from the server
     // Creates a list element that will contain the message
     const item = document.createElement('li');
-    item.textContent = msg;
+    item.textContent = `${sender}: ${msg}`;
     message.appendChild(item);
     window.scrollTo(0, document.body.scrollHeight); // Moves down the pages to fit the message
     socket.auth.serverOffset = serverOffset;

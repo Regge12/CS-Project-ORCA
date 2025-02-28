@@ -4,11 +4,50 @@
     <title>Register</title>
 </head>
 <body>
+
     <h2>Register</h2>
-    <form action="/auth/register" method="POST">
-        <input type="email" name="email" placeholder="Email" required />
-        <input type="password" name="password" placeholder="Password" required />
+    <form id="signup-form">
+        <input name="username" id="username" placeholder="Enter username" required />
+        <input type="password" name="password" id="password" placeholder="Enter Password" required />
         <button type="submit">Register</button>
     </form>
+
+    <div id="error-message" style="display: none; color: red;"></div>
+
+    <script>
+        const form = document.getElementById("signup-form");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault(); // Prevent default form submission
+
+            const username = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value.trim();
+
+            try {
+                const response = await fetch("/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showErrorMessage(data.message); // Show error message from server
+                } else {
+                    window.location.href = "/index.html"; // Redirect on success
+                }
+            } catch (error) {
+                showErrorMessage("An error occurred. Please try again.");
+            }
+        });
+
+        function showErrorMessage(message) {
+            const errorContainer = document.getElementById("error-message");
+            errorContainer.textContent = message;
+            errorContainer.style.display = "block"; // Show error message
+        }
+    </script>
+
 </body>
 </html>

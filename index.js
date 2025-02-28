@@ -10,7 +10,7 @@ const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter');
 // This will import a function the will be used to connect worker (servers) together
 const path = require('path'); // Allows the document to access paths to get other files
 
-
+const authRoutes = require('./routes/auth'); // Make sure this is correct
 
 require('dotenv').config();
 const session = require('express-session');
@@ -45,6 +45,7 @@ async function createDatabase() {
         CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             client_offset TEXT UNIQUE,
+            sender TEXT,
             content TEXT,
             channel TEXT
         );
@@ -60,52 +61,56 @@ async function createDatabase() {
     return db2;
 }
 
-
 if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
     const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
     // create one worker per available core
     for (let i = 0; i < numCPUs; i++) {
         cluster.fork({ PORT: 3000 + i });
     }
-
-    // set up the adapter on the primary thread (Connects all workers together)
+    // set up the adapter on the primary thread (Connects all workers together) 
     return setupPrimary();
 }
 
+
 function handleFileConnection(app) {
     // Serve static files (Give all public files to the client)
-    //app.use(express.static(path.join(__dirname)));
+    app.use(express.static(path.join(__dirname)));
 
     // On request of the server, the server will responds with the HTML file (index.html) as default
     app.get('/', (req, res) => {
         res.sendFile(join(__dirname, 'public', 'index.html'));
     });
 
-// Middleware
-app.use(express.urlencoded({ extended: false })); // Parse form data
-app.use(express.json()); // Parse JSON data
-// Serve static files (IMPORTANT)
-app.use(express.static(path.join(__dirname, 'public')));
+    app.use(express.json()); // ✅ This is needed to parse JSON requests
 
-// Session setup
-app.use(session({
-    secret: process.env.SECRET_KEY || 'your_secret_key',
-    resave: false,
-    saveUninitialized: false
-}));
+    // Load routes
+    app.use(authRoutes);
 
-// Initialize Passport
-app.use(passport.initialize());
-app.use(passport.session());
+    // Middleware
+    app.use(express.urlencoded({ extended: false })); // Parse form data
+    app.use(express.json()); // Parse JSON data
+    // Serve static files (IMPORTANT)
+    app.use(express.static(path.join(__dirname, 'public')));
 
-}
+    // Session setup
+    app.use(session({
+        secret: process.env.SECRET_KEY || 'your_secret_key',
+        resave: false,
+        saveUninitialized: false
+    }));
+
+    // Initialize Passport
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    }
 
 function createPassport(app) {
     // Passport Strategy
 passport.use(new LocalStrategy(
-    { usernameField: 'email' }, // Use email instead of default username
-    (email, password, done) => {
-        const user = db.prepare("SELECT * FROM users WHERE email = ?").get(email);
+    { usernameField: 'username' }, // Use username instead of default username
+    (username, password, done) => {
+        const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
         if (!user) return done(null, false, { message: "User not found" });
 
         bcrypt.compare(password, user.password, (err, isMatch) => {
@@ -126,6 +131,7 @@ passport.deserializeUser((id, done) => {
 // Middleware to protect routes
 function isAuthenticated(req, res, next) {
     if (req.isAuthenticated()) {
+        console.log('User authenticated');
         return next(); // User is authenticated, allow access
     }
     res.redirect('/index.html'); // Redirect to login page if not authenticated
@@ -133,10 +139,15 @@ function isAuthenticated(req, res, next) {
 
 // Serve dashboard.html only if logged in
 app.get('/dashboard.html', isAuthenticated, (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
-});
-}
+    console.log('This route is being hit!');  // Check if this log appears
 
+    const username = req.user.username; // Access the authenticated user's username
+    console.log(`Logged in user: ${username}`);  // Check if the username is logged correctly
+
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));  // Serve the dashboard
+});
+
+}
 // Routes
 //app.use('/auth', require('./routes/auth'));
 
@@ -156,7 +167,7 @@ async function main() {
     createPassport(app);
 
     // Routes
-app.use('/auth', require('./routes/auth'));
+    app.use('/auth', require('./routes/auth'));
 
     // When there is a connection to the server this event will fire
     io.on('connection', async (socket) => {
@@ -179,9 +190,9 @@ app.use('/auth', require('./routes/auth'));
 
             // Fetch past messages for this channel
             try {
-                const messages = await db2.all('SELECT id, content FROM messages WHERE channel = ? ORDER BY id ASC', channel_ID);
+                const messages = await db2.all('SELECT id, content, sender FROM messages WHERE channel = ? ORDER BY id ASC', channel_ID);
                 messages.forEach((row) => {
-                    socket.emit('chat message', row.content, row.id);
+                    socket.emit('chat message', row.content, row.id, row.sender);
                 });
             } catch (e) {
                 console.error('Error fetching messages:', e);
@@ -189,10 +200,10 @@ app.use('/auth', require('./routes/auth'));
         });
         
         // This function will run once a 'chat message' is received by the server
-        socket.on('chat message', async (msg, clientOffset, channel_ID, callback) => {
+        socket.on('chat message', async (msg, clientOffset, channel_ID, sender, callback) => {
             let result;
             try {
-                result = await db2.run('INSERT INTO messages (content, client_offset, channel) VALUES (?, ?, ?)', msg, clientOffset, channel_ID);
+                result = await db2.run('INSERT INTO messages (content, client_offset, channel, sender) VALUES (?, ?, ?, ?)', msg, clientOffset, channel_ID, sender);
                 // Will insert the message into the database
             } catch (e) {
                 if (e.error === 19) {
@@ -200,9 +211,8 @@ app.use('/auth', require('./routes/auth'));
                 }
                 return;
             }
-
             // Will send messages to all client in the corresponding channel
-            io.to(channel_ID).emit('chat message', msg, result.lastID);
+            io.to(channel_ID).emit('chat message', msg, result.lastID, sender);
             callback(); // acknowledge the event
         });
 
