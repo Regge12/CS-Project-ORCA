@@ -1,0 +1,18 @@
+// Middleware to protect routes
+function isAuthenticated(req, res, next) {
+    if (req.isAuthenticated()) {
+        console.log('User authenticated');
+        return next(); // User is authenticated, allow access
+    }
+    res.redirect('/index.html'); // Redirect to login page if not authenticated
+}
+
+// Serve dashboard.html only if logged in
+app.get('/dashboard.html', isAuthenticated, (req, res) => {
+    console.log('This route is being hit!');  // Check if this log appears
+
+    const username = req.user.username; // Access the authenticated user's username
+    console.log(`Logged in user: ${username}`);  // Check if the username is logged correctly
+
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));  // Serve the dashboard
+});

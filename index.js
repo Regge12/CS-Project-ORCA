@@ -9,16 +9,24 @@ const cluster = require('node:cluster'); // This module allows us to run multipl
 const { createAdapter, setupPrimary } = require('@socket.io/cluster-adapter'); 
 // This will import a function the will be used to connect worker (servers) together
 const path = require('path'); // Allows the document to access paths to get other files
-
 const authRoutes = require('./routes/auth'); // Imports the authenication routes
 require('dotenv').config(); // Will store sensitive information outside the code securely 
 const session = require('express-session'); // Manages user sessions (keeps the users logged in)
 const passport = require('passport'); // This will handle authentication
 const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs'); // Will hash our client's password
-const db = require('./db'); // Loads the database (USERDATA)
-const { callbackify } = require('node:util');
-const { config } = require('node:process');
+const userDatabase = require('./db'); // Loads the database (USERDATA)
+
+// if this is the primary process (the first time this code has run)
+if (cluster.isPrimary) {
+    const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
+    // create one worker per available core
+    for (let i = 0; i < numCPUs; i++) {
+        cluster.fork({ PORT: 3000 + i });
+    }
+    // set up the adapter on the primary thread (Connects all workers together) 
+    return setupPrimary();
+}
 
 
 function setUpServer() {
@@ -34,6 +42,7 @@ function setUpServer() {
     
     return { app, server, io };
 }
+
 
 async function createDatabase() {
     const database = await open({
@@ -62,15 +71,6 @@ async function createDatabase() {
     return database;
 }
 
-if (cluster.isPrimary) { // if this is the primary process (the first time this code has run)
-    const numCPUs = availableParallelism(); // Returns the number of cores of the CPU
-    // create one worker per available core
-    for (let i = 0; i < numCPUs; i++) {
-        cluster.fork({ PORT: 3000 + i });
-    }
-    // set up the adapter on the primary thread (Connects all workers together) 
-    return setupPrimary();
-}
 
 function configureSession(app) {
     // The session helps keep the user logged in
@@ -109,13 +109,15 @@ function handleFileConnection(app) {
 
     // Load routes
     app.use(authRoutes);
+    app.use('/auth', require('./routes/auth'));
 
     // Middleware
-    app.use(express.urlencoded({ extended: false })); // Parse form data
-    app.use(express.json()); // Parse JSON data
-    // Serve static files (IMPORTANT)
-    app.use(express.static(path.join(__dirname, 'public')));
+    app.use(express.urlencoded({ extended: false }));
+    // Allows the server to read HTML form data
+    app.use(express.json());
+    // Allows the server to understand JASON data
 }
+
 
 async function checkLoginCredentials(database) {
     // The passport will recieve the username and password from the client when the user tries to login
@@ -144,39 +146,23 @@ async function checkLoginCredentials(database) {
     ));
 }
 
-async function createPassport(app, database) {
-    // Passport Strategy
+async function handleClientSession(database) {
+    // The sever will now remeber the use by saving their ID in the session
+    passport.serializeUser((user, callback) => callback(null, user.id));
+    // If they decide to change pages the ID is used to get their full details
+    passport.deserializeUser((id, callback) => {
+    const user = database.prepare("SELECT * FROM users WHERE id = ?").get(id);
+        callback(null, user);
+});
+}
+
+async function authenticateClient(database) {
+
     await checkLoginCredentials(database)
 
-// Serialize & Deserialize User
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser((id, done) => {
-    const user = db.prepare("SELECT * FROM users WHERE id = ?").get(id);
-    done(null, user);
-});
-
-// Middleware to protect routes
-function isAuthenticated(req, res, next) {
-    if (req.isAuthenticated()) {
-        console.log('User authenticated');
-        return next(); // User is authenticated, allow access
-    }
-    res.redirect('/index.html'); // Redirect to login page if not authenticated
-}
-
-// Serve dashboard.html only if logged in
-app.get('/dashboard.html', isAuthenticated, (req, res) => {
-    console.log('This route is being hit!');  // Check if this log appears
-
-    const username = req.user.username; // Access the authenticated user's username
-    console.log(`Logged in user: ${username}`);  // Check if the username is logged correctly
-
-    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));  // Serve the dashboard
-});
+    await handleClientSession(database);
 
 }
-// Routes
-//app.use('/auth', require('./routes/auth'));
 
 
 const channels = {};
@@ -187,14 +173,11 @@ async function main() {
 
     const { app, server, io } = setUpServer();
 
-    const db2 = await createDatabase();
+    const messageDatabase = await createDatabase();
 
     handleFileConnection(app);
 
-    createPassport(app, db);
-
-    // Routes
-    app.use('/auth', require('./routes/auth'));
+    await authenticateClient(userDatabase);
 
     // When there is a connection to the server this event will fire
     io.on('connection', async (socket) => {
@@ -217,7 +200,7 @@ async function main() {
 
             // Fetch past messages for this channel
             try {
-                const messages = await db2.all('SELECT id, content, sender FROM messages WHERE channel = ? ORDER BY id ASC', channel_ID);
+                const messages = await messageDatabase.all('SELECT id, content, sender FROM messages WHERE channel = ? ORDER BY id ASC', channel_ID);
                 messages.forEach((row) => {
                     socket.emit('chat message', row.content, row.id, row.sender);
                 });
@@ -230,7 +213,7 @@ async function main() {
         socket.on('chat message', async (msg, clientOffset, channel_ID, sender, callback) => {
             let result;
             try {
-                result = await db2.run('INSERT INTO messages (content, client_offset, channel, sender) VALUES (?, ?, ?, ?)', msg, clientOffset, channel_ID, sender);
+                result = await messageDatabase.run('INSERT INTO messages (content, client_offset, channel, sender) VALUES (?, ?, ?, ?)', msg, clientOffset, channel_ID, sender);
                 // Will insert the message into the database
             } catch (e) {
                 if (e.error === 19) {
