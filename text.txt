@@ -1,0 +1,28 @@
+What a session is;
+
+Imagine you go to a coffee shop ☕ and they give you a numbered token 🏷️ when you order.
+
+You don’t have to repeat your order every time you talk to the cashier.
+When your drink is ready, they look at your token number and give you the right order.
+In the same way, when you log in to a website:
+
+The server gives you a session ID (like the token).
+This session ID is stored in a cookie in your browser.
+When you visit another page, your browser sends the session ID, and the server remembers you without asking you to log in again.
+When you log out, the session is deleted—just like returning your token at the coffee shop.
+
+    // The passport will recieve the username and password from the client when the user tries to login
+    passport.use(new LocalStrategy(async (username, password, done) => {
+       try {
+           const user = await database.get('SELECT * FROM users WHERE username = ?', username);
+           // Here it searches the database for the username to get the record
+           if (!user) return done(null, false, { message: 'User not found' });
+           // If username is not in the database an error message is output
+           const match = await bcrypt.compare(password, user.password);
+           // This hashes the password and compares it with the hashed password in the database
+           return match ? done(null, user) : done(null, false, { message: 'Incorrect password' });
+           // If the hashes don't match then an error message is output
+       } catch (err) {
+           return done(err);
+       }
+   }));
