@@ -1,19 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ORCA Login</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2>Login</h2>
-    <form id="login-form">
-        <input id="username" name="username" placeholder="username" required />
-        <input id="password" type="password" name="password" placeholder="Password" required />
-        <button type="submit">Login</button>
-    </form>
-    <a href="register.html">Register</a>
 
-    <div id="error-message" style="display: none; color: red;"></div>
+<div class="container">
+    <!-- Welcome Message -->
+    <div class="welcome-box">
+        <h2>Welcome to ORCA!</h2>
+        <p>
+            ORCA stands for Online Realtime Chat Application, designed for hospitalised children.
+            Our goal is to provide a safe and friendly chat space for long-term hospitalised kids.
+            <br><br>
+            Our mascot, the <strong>orca whale</strong>, represents social connection—just like humans, orcas need
+            companionship to thrive. Join us and stay connected!
+        </p>
+    </div>
 
+    <!-- Login Form -->
+    <div class="login-box">
+        <h3>Login</h3>
+        <form id="login-form">
+            <input id="username" type="text" name="username" placeholder="Username" required>
+            <input id="password" type="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <div id="error-message" class="error-message">Invalid credentials. Please try again.</div>
+        
+        <!-- Small Register Link -->
+        <div class="register-link">
+            New here? <a href="register.html">Create an account</a>
+        </div>
+    </div>
+</div>
     <script>
         document.getElementById("login-form").addEventListener("submit", async (e) => {
             e.preventDefault(); // Prevent default form submission

@@ -1,30 +1,40 @@
 <!DOCTYPE html>
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width,initial-scale=1.0">
-    <title>Socket.IO chat</title>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
     <link rel="stylesheet" href="style.css">
-  </head>
-  <body>
-    <select id="channelSelect">
-      <option value="general">General</option>
-      <option value="tech">Tech</option>
-      <option value="gaming">Gaming</option>
-    </select>
-    <button onclick="switchChannel()">Switch Channel</button>
-    <ul id="messages"></ul>
-    <form id="form">
-      <input id="input" autocomplete="off" placeholder="Enter" />
-      <button>Send</button>
+    </style>
+</head>
+<body>
+  <div class="chat-container">
+      <div class="header">
+          <select id="channel-select">
+              <option value="general">General</option>
+              <option value="gaming">Gaming</option>
+              <option value="movies">Movies</option>
+          </select>
+          <button onclick="switchChannel()" class="channel-switch" id="switch-channel">Switch Channel</button>
+          <button class="logout" onclick="logout()">Logout</button>
+        </div>
+      <div class="chat-box" id="chat-box">
+        <ul id="messages"></ul>
+      </div>
+      <form id="form">
+      <div class="input-box">
+          <input type="text" id="input" placeholder="Type a message...">
+          <button id="send-button">Send</button>
+      </div>
     </form>
+  </div>
     <script src="/socket.io/socket.io.js"></script>
     <script src="./script.js"></script>
 
     <script>
       // When the client switches channels this event will run
       function switchChannel() {
-        let newChannel = document.getElementById("channelSelect").value;
+        let newChannel = document.getElementById("channel-select").value;
         socket.emit('join channel', newChannel, username, (response) => { // the client joins the new channel
         console.log(response);
         document.getElementById("messages").innerHTML = ""; // Clear messages when switching
@@ -32,6 +42,14 @@
       channel_ID = newChannel;
       }
 
+      function logout() {
+    // You may want to clear the user's session or perform any necessary logout actions here
+    // For example, if using Passport.js, you might do something like:
+    // socket.emit('logout', username); // if you're handling logout via socket
+
+    // Then redirect to the index.html page
+    window.location.href = 'index.html';  // Redirect to index.html
+  }
     </script>
-  </body>
+</body>
 </html>
