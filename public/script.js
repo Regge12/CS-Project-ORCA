@@ -15,6 +15,8 @@ let socket = io({
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 const message = document.getElementById('messages'); // Container for the recieved messages
+// List of banned words (you can expand this list)
+const bannedWords = ["crap", "curse", "offensive"];
 
 let channel_ID = "general"; // the default channel
 let username = prompt("Enter your username:") || "Anonymous";
@@ -26,6 +28,21 @@ socket.emit('join channel', channel_ID, username, (response) => {
     console.log(response);
 });
 
+
+
+// Function to censor words in a message
+function censorMessage(message) {
+    let words = message.split(/\b/); // Split by word boundaries
+
+    return words.map(word => {
+        let lowerCaseWord = word.toLowerCase();
+        if (bannedWords.includes(lowerCaseWord)) {
+            return "#".repeat(word.length); // Replace with hashtags
+        }
+        return word; // Keep non-banned words unchanged
+    }).join(""); // Reassemble the sentence
+}
+
 // Once the submit button is pressed, the client checks if the message is not empty
 // Then the client sends this message to the client
 form.addEventListener('submit', (e) => {
@@ -33,7 +50,7 @@ form.addEventListener('submit', (e) => {
     if (input.value) {
         // Creates an unique identifier for each message
         let clientOffset = `${socket.id}-${Date.now()}`;
-        socket.emit('chat message', input.value, clientOffset, channel_ID, username);
+        socket.emit('chat message', censorMessage(input.value), clientOffset, channel_ID, username);
         input.value = '';
     }
 });

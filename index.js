@@ -110,12 +110,6 @@ function handleFileConnection(app) {
     // Load routes
     app.use(authRoutes);
     app.use('/auth', require('./routes/auth'));
-
-    // Middleware
-    app.use(express.urlencoded({ extended: false }));
-    // Allows the server to read HTML form data
-    app.use(express.json());
-    // Allows the server to understand JASON data
 }
 
 

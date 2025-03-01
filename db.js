@@ -10,4 +10,5 @@ db.prepare(`
   )
 `).run();
 
+// exports database so that index.js can access it
 module.exports = db;
