@@ -36,8 +36,8 @@
       function switchChannel() {
         let newChannel = document.getElementById("channel-select").value;
         socket.emit('join channel', newChannel, username, (response) => { // the client joins the new channel
-        console.log(response);
-        document.getElementById("messages").innerHTML = ""; // Clear messages when switching
+          console.log(response);
+          document.getElementById("messages").innerHTML = ""; // Clear messages when switching
       });
       channel_ID = newChannel;
       }

@@ -161,6 +161,16 @@ async function authenticateClient(database) {
 
 const channels = {};
 // container for the channels
+function removeUserFromChannel(io, socket){
+    for (let channel_ID in channels) {
+        if (channels[channel_ID].users[socket.id]) {
+            let username = channels[channel_ID].users[socket.id];
+            delete channels[channel_ID].users[socket.id];
+            socket.leave(channel_ID);
+            io.to(channel_ID).emit('user-left', username);
+        }
+    }
+}
 
 // This function is the main part of our program, it has one entry point and is asynchronous
 async function main() {
@@ -178,6 +188,8 @@ async function main() {
         console.log('A user connected');
 
         socket.on('join channel', async (channel_ID, username, callback) => {
+
+            removeUserFromChannel(io, socket);
 
             socket.join(channel_ID); // client joins the channel
             if (!channels[channel_ID]) {
@@ -211,26 +223,22 @@ async function main() {
                 // Will insert the message into the database
             } catch (e) {
                 if (e.error === 19) {
-                    callback(); // Will notifiy the client when there is a duplicate message
+                    console.error('Error inserting messages:', e);
+                    //callback(e); // Will notifiy the client when there is a duplicate message
                 }
                 return;
             }
             // Will send messages to all client in the corresponding channel
             io.to(channel_ID).emit('chat message', msg, result.lastID, sender);
-            callback(); // acknowledge the event
+            callback(`message has been sent in ${channel_ID}`); // acknowledge the event
         });
 
         // this will remove the client from the channel once the client disconnects
         socket.on('disconnect', () => {
             console.log('User disconnected');
-            for (let channel_ID in channels) {
-                if (channels[channel_ID].users[socket.id]) {
-                    let username = channels[channel_ID].users[socket.id];
-                    delete channels[channel_ID].users[socket.id];
-                    io.to(channel_ID).emit('user-left', username);
-                }
-            }
+            removeUserFromChannel(io, socket);
         });
+
     });
 
     // each worker will listen on a distinct portSS

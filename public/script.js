@@ -34,8 +34,8 @@ socket.emit('join channel', channel_ID, username, (response) => {
 function censorMessage(message) {
     let words = message.split(/\b/); // Split by word boundaries
 
-    return words.map(word => {
-        let lowerCaseWord = word.toLowerCase();
+    return words.map(word => { 
+        let lowerCaseWord = word.toLowerCase(); // Puts the word into lowercase
         if (bannedWords.includes(lowerCaseWord)) {
             return "#".repeat(word.length); // Replace with hashtags
         }
@@ -43,7 +43,7 @@ function censorMessage(message) {
     }).join(""); // Reassemble the sentence
 }
 
-// Once the submit button is pressed, the client checks if the message is not empty
+// Once the submit button is pressed, the client chencks if the message is not empty
 // Then the client sends this message to the client
 form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -52,6 +52,9 @@ form.addEventListener('submit', (e) => {
         let clientOffset = `${socket.id}-${Date.now()}`;
         socket.emit('chat message', censorMessage(input.value), clientOffset, channel_ID, username);
         input.value = '';
+        input.placeholder = "Type a message...";
+    } else {
+        input.placeholder = "Invalid input";
     }
 });
 
